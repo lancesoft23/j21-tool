@@ -4,7 +4,8 @@ from javalang.tree import ClassDeclaration, Literal, MemberReference, ElementVal
     ReturnStatement, BinaryOperation, LocalVariableDeclaration, StatementExpression, MethodInvocation, \
     ReferenceType, TypeParameter, ReturnStatement, MemberReference, ClassCreator, StatementExpression, \
     ClassReference, Assignment, This, LambdaExpression, MethodReference, IfStatement, BlockStatement, \
-    BinaryOperation, ThrowStatement, BinaryOperation, FormalParameter
+    BinaryOperation, ThrowStatement, BinaryOperation, FormalParameter, ForStatement, EnhancedForControl, \
+    VariableDeclaration, TypeArgument
 
 from j21tool.formatter import Formatter, PieceType
 from j21tool.javalangex import RecordDeclaration
@@ -42,6 +43,8 @@ def format_any(out, elem):
         format_any(out, elem.method)
     elif isinstance(elem, ReferenceType):
         format_type(out, elem)
+    elif isinstance(elem, TypeArgument):
+        format_type(out, elem.type)
     elif isinstance(elem, ClassCreator):
         out.add('new')
         format_type(out, elem.type)
@@ -71,6 +74,8 @@ def format_any(out, elem):
         out.add(';', PieceType.END_OF_STATEMENT)
     elif isinstance(elem, LocalVariableDeclaration):
         format_local_var(out, elem)
+    elif isinstance(elem, VariableDeclaration):
+        format_var(out, elem)
     elif isinstance(elem, StatementExpression):
         format_stmt(out, elem)
     elif isinstance(elem, BinaryOperation):
@@ -80,7 +85,7 @@ def format_any(out, elem):
     elif isinstance(elem, IfStatement):
         out.add('if').add('(', PieceType.LPARENTHESIS)
         format_any(out, elem.condition)
-        out.add(')', PieceType.RPARENTHESIS).add('{\n', PieceType.BEGIN_BLOCK)
+        out.add(')', PieceType.RPARENTHESIS).add('{\n', PieceType.BEGIN_BLOCK)      
         format_any(out, elem.then_statement)
         out.add('}', PieceType.END_BLOCK)
         if elem.else_statement:
@@ -94,6 +99,17 @@ def format_any(out, elem):
     elif isinstance(elem, BlockStatement):
         for stmt in elem.statements:
             format_any(out, stmt)
+    elif isinstance(elem, ForStatement):
+        out.add('for').add('(', PieceType.LPARENTHESIS)
+        format_any(out, elem.control)
+        out.add(')', PieceType.RPARENTHESIS)
+        out.add('{\n', PieceType.BEGIN_BLOCK)
+        format_any(out, elem.body)
+        out.add('}\n', PieceType.END_BLOCK)
+    elif isinstance(elem, EnhancedForControl):
+        format_any(out, elem.var)
+        out.add(':')
+        format_any(out, elem.iterable)
     elif isinstance(elem, ThrowStatement):
         out.add('throw')
         format_any(out, elem.expression)
@@ -245,13 +261,8 @@ def format_field(out, field):
     format_comment(out, field.documentation)
     format_annotations(out, field.annotations)
     format_modifiers(out, field.modifiers)
-    format_type(out, field.type)
-    for d in field.declarators:
-        out.add(d.name)
-        if d.initializer:
-            out.add("=", PieceType.ASSIGN)
-            format_any(out, d.initializer)  
-        out.add(';', PieceType.END_OF_STATEMENT)
+    format_var(out, field)
+    out.add(';', PieceType.END_OF_STATEMENT)
 
 def format_local_var(out, v):
     # LocalVariableDeclaration(annotations=[], declarators=[
@@ -264,14 +275,17 @@ def format_local_var(out, v):
     #format_comment(out, v.documentation)
     format_annotations(out, v.annotations)
     format_modifiers(out, v.modifiers)
+    format_var(out, v)
+    out.add(';', PieceType.END_OF_STATEMENT)
+        
+def format_var(out, v):
     format_type(out, v.type)
     for d in v.declarators:
         out.add(d.name)
         if d.initializer:
             out.add("=", PieceType.ASSIGN)
             format_any(out, d.initializer)       
-        out.add(';', PieceType.END_OF_STATEMENT)
-    
+
 def format_method(out, m, class_name = None):
     format_comment(out, m.documentation)
     format_annotations(out, m.annotations)
@@ -300,6 +314,7 @@ def format_method(out, m, class_name = None):
 def format_stmt(out, stmt):
     # StatementExpression(expression=MethodInvocation(arguments=[BinaryOperation(operandl=Literal(postfix_operators=[], prefix_operators=[], qualifier=None, selectors=[], value="n="), operandr=MemberReference(member=n, postfix_operators=[], prefix_operators=[], qualifier=, selectors=[]), operator=+)], member=println, postfix_operators=[], prefix_operators=[], qualifier=System.out, selectors=[], type_arguments=None), label=None);
     format_any(out, stmt.expression)
+    out.add(';', PieceType.END_OF_STATEMENT)
 
 def format_invocation(out, inv):
     """ MethodInvocation(arguments=[BinaryOperation(operandl=Literal(postfix_operators=[], prefix_operators=[], qualifier=None, selectors=[], value="n="),

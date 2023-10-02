@@ -36,7 +36,6 @@ class ParserEx(Parser):
     def parse_record_declaration(self):
         name = None
         type_params = None
-        extends = None
         implements = None
         body = None
 
@@ -47,11 +46,11 @@ class ParserEx(Parser):
         if self.would_accept('<'):
             type_params = self.parse_type_parameters()
 
+        parameters = self.parse_formal_parameters()
+
         if self.try_accept('implements'):
             implements = self.parse_type_list()
 
-        parameters = self.parse_formal_parameters()
-        
         body = self.parse_class_body()
 
         return RecordDeclaration(name=name,

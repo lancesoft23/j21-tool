@@ -12,15 +12,14 @@ class JavaTokenizerEx(JavaTokenizer):
         """Adding start (inclusive) and end (exclusive) in original source in the token.position."""
         token = JavaTokenizer.tokenize(self)
         p = token.position
-        token.postion = PositionEx(line = p.line, column = p.column, start = self.i, end = self.j)
+        token.position = PositionEx(line = p.line, column = p.column, start = self.i, end = self.j)
         return token
     
     def read_string(self):
         if self.read_text_block():
             print("found a text block")
-            return
         else:
-            return JavaTokenizer.read_string(self)
+            JavaTokenizer.read_string(self)
         
     def read_text_block(self):
         # start Java 15 text block

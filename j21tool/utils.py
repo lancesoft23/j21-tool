@@ -4,17 +4,23 @@ Utilities
 import os
 from os import path
 from collections.abc import Sequence
-from javalang.ast import Node
+from javalang.ast import Node, walk_tree
 from javalang.tree import CompilationUnit, ClassDeclaration, Import, PackageDeclaration
 from j21tool.javalangex import PositionEx
 
 def is_dirty(node):
     if hasattr(node, "_dirty") and node._dirty:
         return True
-    for child in node.children():
-        if is_dirty(child):
-            return True
-    return False
+    return True
+
+    # if not hasattr(node, 'chidren'):
+    #     print(f"node {node} has not children")
+    #     return False
+    
+    # for child in node.children():
+    #     if is_dirty(child):
+    #         return True
+    # return False
 
 # ------------------------------------------------------------------------------
 # -- Misc --    
@@ -136,3 +142,9 @@ f"""class Dummy {{
 }}
 """)
     return tree.types[0].methods
+
+def search_tree(ast, predict):
+    for path, node in walk_tree(ast):
+        if predict(node):
+            return path, node
+    return None, None

@@ -18,9 +18,9 @@ def upgrade_to_java21(project_dir, output_dir):
         if any(item.startswith('.') for item in rel_path_parts):
             continue
 
-        upgrade_java(str(path), os.path.join(output_dir, *rel_path_parts))
+        upgrade_java_file(str(path), os.path.join(output_dir, *rel_path_parts))
 
-def upgrade_java(java_file, output_file):
+def upgrade_java_file(java_file, output_file):
     print(f"converting {java_file}")
     with open(java_file) as f:
         codes = f.read()

@@ -18,14 +18,14 @@ def is_value_object(c, imports):
         return False
 
     # has @lombok.Value
-    has_value_annotion = any(ann.name == 'Value' for ann in c.annotations) \
+    has_value_annotation = any(ann.name == 'Value' for ann in c.annotations) \
         and any(imp.path == 'lombok.Value' and not imp.static for imp in imports)
     has_data_annotation = any(ann.name == 'Data' for ann in c.annotations) \
         and any(imp.path == 'lombok.Data' and not imp.static for imp in imports)
     has_builder_annotation = any(ann.name == 'Builder' for ann in c.annotations) \
         and any(imp.path == 'lombok.Builder' and not imp.static for imp in imports)
     # is a simple immutable value object
-    return has_value_annotion and (not has_data_annotation) and (not has_builder_annotation)
+    return has_value_annotation and (not has_data_annotation) and (not has_builder_annotation)
 
 def convert_to_record(class_def):
 

@@ -1,5 +1,8 @@
 
 from javalang.parser import Parser
+from javalang import tree
+from javalang.tree import Literal
+from javalang.tokenizer import Identifier, BasicType
 from j21tool.javalangex import RecordDeclaration
 
 class ParserEx(Parser):
@@ -8,6 +11,114 @@ class ParserEx(Parser):
     def __init__(self, tokens):
         Parser.__init__(self, tokens)
 
+    def parse_identifier_suffix(self):
+        """patch for array instantiator method reference"""
+        if self.try_accept('[', ']'):
+            array_dimension = [None] + self.parse_array_dimension()
+            # fix for the syntax of type[]::new.
+            if self.try_accept('::'):
+                method_reference, type_arguments = self.parse_method_reference()
+                return tree.MethodReference(
+                    expression=tree.Type(dimensions=array_dimension),
+                    method=method_reference,
+                    type_arguments=type_arguments)
+            
+            self.accept('.', 'class')
+            return tree.ClassReference(type=tree.Type(dimensions=array_dimension))
+
+        elif self.would_accept('('):
+            arguments = self.parse_arguments()
+            return tree.MethodInvocation(arguments=arguments)
+
+        elif self.try_accept('.', 'class'):
+            return tree.ClassReference()
+
+        elif self.try_accept('.', 'this'):
+            return tree.This()
+
+        elif self.would_accept('.', '<'):
+            next(self.tokens)
+            return self.parse_explicit_generic_invocation()
+
+        elif self.try_accept('.', 'new'):
+            type_arguments = None
+
+            if self.would_accept('<'):
+                type_arguments = self.parse_nonwildcard_type_arguments()
+
+            inner_creator = self.parse_inner_creator()
+            inner_creator.constructor_type_arguments = type_arguments
+
+            return inner_creator
+
+        elif self.would_accept('.', 'super', '('):
+            self.accept('.', 'super')
+            arguments = self.parse_arguments()
+            return tree.SuperConstructorInvocation(arguments=arguments)
+
+        else:
+            return tree.MemberReference()
+
+    def parse_type_list(self):
+        """patch for Java 8 type annotation"""
+        types = list()
+        annotations = []
+
+        while True:
+            if self.would_accept('@'):
+                annotations = self.parse_annotations()
+
+            if self.would_accept(BasicType):
+                base_type = self.parse_basic_type()
+                self.accept('[', ']')
+                base_type.dimensions = [None]
+            else:
+                base_type = self.parse_reference_type()
+                base_type.dimensions = []
+
+            base_type.dimensions += self.parse_array_dimension()
+            if annotations:
+                base_type.annotations = annotations
+                annotations = []
+
+            types.append(base_type)
+
+            if not self.try_accept(','):
+                break
+
+        return types
+    
+    def parse_type_argument(self):
+        pattern_type = None
+        base_type = None
+        annotations = []
+
+        if self.try_accept('?'):
+            if self.tokens.look().value in ('extends', 'super'):
+                pattern_type = self.tokens.next().value
+            else:
+                return tree.TypeArgument(pattern_type='?')
+            
+        if self.would_accept('@'):
+            annotations = self.parse_annotations()
+
+        if self.would_accept(BasicType):
+            base_type = self.parse_basic_type()
+            self.accept('[', ']')
+            base_type.dimensions = [None]
+        else:
+            base_type = self.parse_reference_type()
+            base_type.dimensions = []
+
+        base_type.dimensions += self.parse_array_dimension()
+        if annotations:
+            base_type.annotations = annotations
+            annotations = []
+            
+        return tree.TypeArgument(type=base_type,
+                                 pattern_type=pattern_type)
+
+    
     def parse_class_or_interface_declaration(self):
         modifiers, annotations, javadoc = self.parse_modifiers()
         type_declaration = None
